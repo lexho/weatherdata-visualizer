@@ -1,0 +1,22 @@
+:root {
+  --primary: hsl(0 0% 99%);
+  --secondary: hsl(0 0% 60%);
+}
+body { font-family: sans-serif; background: hsl(0, 0%, 95%);}
+table,tr,th,td { border: 2px solid darkgray; background-color: var(--primary); } 
+th { background-color: var(--secondary); color: var(--primary); text-align: left; } 
+th,td { padding-left: 0.5em; padding-right: 0.5em; } 
+div { width: 100%; margin-top: 0.5em; } 
+.container{ 
+    display: grid;
+    grid-template-columns: fit-content(80px);
+}
+button {
+    margin: 0.5em 0 0.5em 0;
+    width: 100px;
+    padding: 0.4em;
+    font-weight: bold;
+    border: 2px solid black;
+    background-color: var(--secondary);
+    color: var(--primary);
+}
