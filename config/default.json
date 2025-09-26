@@ -1,0 +1,15 @@
+{
+  "app": {
+    "version": "v2.1.0",
+    "port": "8080",
+    "serialport": "/dev/serial/by-id/usb-Arduino__www.arduino.cc__0043_75735303531351415250-if00",
+    "useFakeSerial": true,
+    "baudRate": 9600,
+    "maxBufferSize": 100,
+    "bufferTime": 60000,
+    "database": {
+      "filename": "data/weather_test.db",
+      "filesizelimit": 100000000
+    }
+  }
+}

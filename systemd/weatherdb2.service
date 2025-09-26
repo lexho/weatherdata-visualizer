@@ -1,0 +1,16 @@
+[Unit]
+Description=writes weather data to database
+StartLimitIntervalSec=30
+StartLimitBurst=2
+
+[Service]
+Type=simple
+User=debian
+WorkingDirectory=/home/debian/weatherdb2
+ExecStart=/usr/bin/node index.js
+#RuntimeMaxSec=1h
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+

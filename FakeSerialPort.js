@@ -18,15 +18,15 @@ export class FakeSerialPort extends EventEmitter {
       function getRandomInt(max) {
         return Math.floor(Math.random() * max);
       }
-      let temp = Math.round((Math.random()*60 - 20) * 10) / 10
+      let temp = Math.round((Math.random()*60 - 80) * 10) / 10
       let pressure = Math.round((Math.random()*400 + 1000) * 10) / 10
       let windspeed = Math.round((Math.random()*200 + 100) * 10) / 10 //Math.round(Math.random(200)*10)/10
       let tendency = ["falling", "steady", "rising"][Math.round(Math.random()*2)]
-      let winddir1 = ["N", "NO", "NW", "S", "SO", "SW", "O", "W"]
+      let winddir1 = ["N", "NO", "NW", "S", "SO", "SW", "O", "W", "X", "Y"]
       let winddir = winddir1[Math.round(Math.random()*winddir1.length-1)]
       const data = `${temp}oC ${pressure}hPa ${tendency} ${windspeed}km/h ${winddir}\n`;
       this.emit('data', data);
-    }, 1000);
+    }, 4000);
   }
 
   close() {

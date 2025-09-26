@@ -1,14 +1,90 @@
 // /path/to/your/project/DataEmitter.js
 import { EventEmitter } from 'events';
 import { fromEvent } from 'rxjs';
-import { map, takeUntil, tap, filter, bufferCount } from 'rxjs/operators';
+import { map, takeUntil, tap, filter, bufferCount, bufferTime } from 'rxjs/operators';
 import { SerialPort } from 'serialport';
 import { ReadlineParser } from '@serialport/parser-readline'
 import { FakeSerialPort } from './FakeSerialPort.js';
 import sqlite from 'sqlite3';
+import fs from 'node:fs';
+import { rmSync, linkSync } from 'node:fs';
+import { exec } from 'node:child_process';
+import config from 'config';
+
+const dataDir = "./data/"
+function getDBCounter() {
+  // Ensure data directory exists
+  if (!fs.existsSync('./data')) {
+    fs.mkdirSync('./data');
+  }
+  const files = fs.readdirSync(dataDir);
+  const dbNumbers = files
+    .map(file => {
+      const match = file.match(/^weather_test(\d+)\.db$/);
+      return match ? parseInt(match[1], 10) : 0;
+    })
+    .filter(num => num > 0);
+
+  return dbNumbers.length > 0 ? Math.max(...dbNumbers) : 1;
+}
+
+const version = config.get('app.version')
+const serialport = config.get('app.serialport')
+const maxBufferSize = config.get('app.maxBufferSize')
+const buffertime = config.get('app.bufferTime')
+const useFakeSerial = config.get('app.useFakeSerial')
+const baudRate = config.get('app.baudRate')
+
+let db;
+let dbCounter = getDBCounter()
+let dbFilenameRaw = config.get('app.database.filename')
+let dbFilename
+const dbLimit = config.get('app.database.filesizelimit') // 100 MB 100 000 000 B
+
+function linkDatabase() {
+  const filename = `./data/weather_test.db`
+  const filename_express = `./public/download/weather_test.db`
+  rmSync(filename, { force: true });
+  linkSync(dbFilename, filename)
+  rmSync(filename_express, { force: true });
+  linkSync(dbFilename, filename_express)
+}
+
+function incrementDBFilename(name) {
+  console.log("increment db filename")
+  const filename = `./data/weather_test.db`
+  linkDatabase();
+  dbCounter++;
+  dbFilename = `./data/weather_test${dbCounter}.db`
+  console.log(`create db file: ${dbFilename}`)
+  initializeDatabase();
+}
+
+function initializeDatabase() {
+  console.log(`db filename: '${dbFilename}'`)
+  console.log(`db limit: ${dbLimit} Bytes`)
+
+  // Ensure data directory exists
+  if (!fs.existsSync('./data')) {
+    fs.mkdirSync('./data');
+  }
+
+  db = new sqlite.Database(dbFilename, (err) => {
+    if (err) {
+      console.error('Error opening database', err.message);
+      process.exit(1);
+    }
+    console.log(`Connected to database: ${dbFilename}`);
+  });
+
+  db.serialize(() => {
+    // Create table if it doesn't exist
+    db.run('CREATE TABLE IF NOT EXISTS Weather (id INTEGER PRIMARY KEY AUTOINCREMENT, timestamp INTEGER, date TEXT, time TEXT, temp REAL, pressure REAL, tendency TEXT, windspeed REAL, winddir TEXT)');
+  });
+}
 
 /**
- * A class that emits a 'data' event every 3 seconds.
+ * A class that writes buffered data to a database
  */
 export class SerialToDatabase {
   #counter = 0;
@@ -16,24 +92,33 @@ export class SerialToDatabase {
   #dataSubscription;
 
   constructor() {
+    console.log("version: " +  version)
+    if (useFakeSerial) console.log('serial: using FakeSerialPort for testing.');
+    // Initialize DB on startup
+    let dbFilenameRaw_splitted = dbFilenameRaw.split('.')
+    dbFilename = dbFilenameRaw_splitted[0] + dbCounter + "." + dbFilenameRaw_splitted[1]
+    initializeDatabase();
+    linkDatabase();
+    console.log(`bufferTime: ${buffertime} ms`)
+    console.log(`maxBufferSize: ${maxBufferSize}`)
     console.log('SerialToDatabase initialized.');
   }
 
   time1111 = new Date().getTime()
   item = {
-          id: 0,
-          timestamp: 0,
-          date: 0,
-          time: 0,
-          weather: {
-            temp: { value: 0 },
-            pressure: { value: 0 },
-            tendency: { value: "" },
-            windspeed: { value: 0 },
-            winddir: { value: "" }
-          }
-        };
-  datasets = [this.item,this.item,this.item,this.item,this.item]; // datasets for web app gui
+    id: 0,
+    timestamp: 0,
+    date: 0,
+    time: 0,
+    weather: {
+      temp: { value: 0 },
+      pressure: { value: 0 },
+      tendency: { value: "" },
+      windspeed: { value: 0 },
+      winddir: { value: "" }
+    }
+  };
+  datasets = [this.item, this.item, this.item, this.item, this.item]; // datasets for web app gui
   getData() {
     return this.datasets;
   }
@@ -42,13 +127,21 @@ export class SerialToDatabase {
    * Starts watching the file for changes and emitting data events.
    */
   start() {
-    /*this.#port = new SerialPort({
-      path: 'COM7',
-      baudRate: 9600,
-    });*/
-
-    console.log('Using FakeSerialPort for testing.');
-    this.#port = new FakeSerialPort();
+    try {
+      if (!useFakeSerial) {
+        this.#port = new SerialPort({
+          path: serialport,
+          baudRate: baudRate,
+        });
+      } else {
+        this.#port = new FakeSerialPort();
+      }
+    } catch (err) {
+      console.error('Failed to open serial port:', err.message);
+      console.log('Retrying in 10 seconds...');
+      setTimeout(() => this.reset(), 10000);
+      return;
+    }
 
     const parser = this.#port.pipe(new ReadlineParser({ delimiter: '\n' }));
 
@@ -56,6 +149,10 @@ export class SerialToDatabase {
       console.log("serial port open")
     });
 
+    this.#port.on('error', (err) => {
+      console.error('SerialPort reported an error:', err.message);
+      this.reset();
+    });
     const data$ = fromEvent(parser, 'data');
     //const close$ = fromEvent(this, 'close');
 
@@ -69,12 +166,13 @@ export class SerialToDatabase {
         let diff = date1111 - this.time1111
         this.time1111 = date1111
         //console.log("diff: " + diff)
-        if (diff > 120000) { 
+        if (diff > 120000) {
           console.error("120 seconds since data received. is serial connection down?");
-          process.exit(1)
+          this.reset()
         }
         return line;
       }),
+      map(line => line.trimEnd()), // remove trailing characters at the end of the line
       map(line => line.split(' ')),
       map(d => {
         let date = new Date();
@@ -108,21 +206,41 @@ export class SerialToDatabase {
           }
         };
       }),
-      tap(dataset => { this.datasets.push(dataset); this.datasets.shift()}),
-      bufferCount(5)
+      tap(dataset => { this.datasets.push(dataset); this.datasets.shift() }),
+      // bufferTime will emit a buffer of items every `buffertime` milliseconds,
+      // OR when the buffer reaches `buffercount` items, whichever happens first.
+      bufferTime(buffertime, null, maxBufferSize)
     ).subscribe(
       {
         next: (dataBatch) => {
-          console.log('--- Collected a batch of 5 data points (value > 50) ---');
-          //console.log(JSON.stringify(dataBatch));
+          if (dataBatch.length === 0) return; // Don't process empty batches
+
+          console.log(`--- Collected a batch of ${dataBatch.length} data points ---`);
           // write data to database
           console.log("write data to database (" + dataBatch.length + " datasets)")
+          fs.stat(dbFilename, (err, stats) => {
+            if (err) {
+              console.error(err);
+            }
+            const file_size = stats.size
+            console.log(`db: ${dbFilename} filesize: ${file_size} B`)
+            if (file_size > dbLimit) {
+              console.log("file is too big")
+              incrementDBFilename()
+              exec(`sqlite3 ${dbFilename} < createTable.sql`);
+            }
+            // we have access to the file stats in `stats`
+          });
           for (let dataset of dataBatch) {
             writeToDatabase(dataset);
           }
           //this.collectedData.push(...dataBatch);
         },
-        error: (err) => console.error('An error occurred:', err),
+        error: (err) => {
+          console.error('An error occurred in the RxJS stream:', err);
+          // An error here often indicates a problem with the underlying port. Reset it.
+          this.reset();
+        },
         complete: () => console.log('Data collection complete.'),
       });
   }
@@ -141,29 +259,35 @@ export class SerialToDatabase {
       console.log('Serial port closed.');
     }
   }
+
+  reset() {
+    console.log('Resetting SerialPort connection...');
+    this.stop();
+    console.log('Attempting to restart in 5 seconds...');
+    setTimeout(() => this.start(), 5000);
+  }
 }
 
 function writeToDatabase(dataset) {
-  console.log("write to database: id: " + dataset.id)
-    const db = new sqlite.Database('./weather_test.db');
+  //console.log("write to database: id: " + dataset.id)
 
-    db.serialize(() => {
-      //console.log(dataset)
-      const query = 'INSERT INTO Weather (timestamp, date, time, temp, pressure, tendency, windspeed, winddir) VALUES (?, ?, ?, ?, ?, ?, ?, ?)';
-      const timestamp = dataset.timestamp
-      const date = dataset.date
-      const time = dataset.time
-      const temp = dataset.weather.temp.value
-      const pressure = dataset.weather.pressure.value
-      const tendency = dataset.weather.tendency.value
-      const windspeed = dataset.weather.windspeed.value
-      const winddir = dataset.weather.winddir.value
-      db.run(query, [timestamp, date, time, temp, pressure, tendency, windspeed, winddir], (error, results) => {
-        if (error) {
-          console.error(error);
-        } else {
-          //console.log(results);
-        }
-      });
+  //db = new sqlite.Database(DB_filename);
+
+  db.serialize(() => {
+    //console.log(dataset)
+    const query = 'INSERT INTO Weather (timestamp, date, time, temp, pressure, tendency, windspeed, winddir) VALUES (?, ?, ?, ?, ?, ?, ?, ?)';
+    const timestamp = dataset.timestamp
+    const date = dataset.date
+    const time = dataset.time
+    const temp = dataset.weather.temp.value
+    const pressure = dataset.weather.pressure.value
+    const tendency = dataset.weather.tendency.value
+    const windspeed = dataset.weather.windspeed.value
+    const winddir = dataset.weather.winddir.value
+    db.run(query, [timestamp, date, time, temp, pressure, tendency, windspeed, winddir], (error, results) => {
+      if (error) {
+        console.error('DB insert error:', error.message);
+      }
     });
-  }
+  });
+}
