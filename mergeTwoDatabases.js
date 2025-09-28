@@ -167,12 +167,12 @@ export function mergeDatabasesWithRxJS(sourceDb1Path, sourceDb2Path, outputDbPat
         if (!fs.existsSync(sourceDb1Path)) {
           console.log('Table created in output DB. Only db1 source streams...');
           const stream1$ = streamRowsFromDb(sourceDb2Path);
-          //return stream1$.pipe(take(maxRows));
+          return stream1$.pipe(take(maxRows));
         }
         if (!fs.existsSync(sourceDb2Path)) {
           console.log('Table created in output DB. Only db2 source streams...');
           const stream1$ = streamRowsFromDb(sourceDb2Path);
-          //return stream1$.pipe(take(maxRows));
+          return stream1$.pipe(take(maxRows));
         }
 
         // two db files exist
@@ -214,9 +214,9 @@ export function mergeDatabasesWithRxJS(sourceDb1Path, sourceDb2Path, outputDbPat
 
         })
 
-        const stream1$ = streamRowsFromDb(sourceDb1Path);
+        /*const stream1$ = streamRowsFromDb(sourceDb1Path);
         const stream2$ = streamRowsFromDb(sourceDb2Path);
-        return merge(stream1$, stream2$).pipe(take(maxRows));
+        return merge(stream1$, stream2$).pipe(take(maxRows));*/
       }),
       // 3. Buffer the merged rows for efficient batch insertion
       bufferCount(1000),
