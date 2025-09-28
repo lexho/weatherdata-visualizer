@@ -20,7 +20,7 @@ function getDBCounter() {
   const files = fs.readdirSync(dataDir);
   const dbNumbers = files
     .map(file => {
-      const match = file.match(/^weather_test(\d+)\.db$/);
+      const match = file.match(/^weather(\d+)\.db$/);
       return match ? parseInt(match[1], 10) : 0;
     })
     .filter(num => num > 0);
@@ -36,14 +36,14 @@ const useFakeSerial = config.get('app.useFakeSerial')
 const baudRate = config.get('app.baudRate')
 
 let db;
-let dbCounter = getDBCounter()
-let dbFilenameRaw = config.get('app.database.filename')
+export let dbCounter = getDBCounter()
+export let dbFilenameRaw = config.get('app.database.filename')
 let dbFilename
 const dbLimit = config.get('app.database.filesizelimit') // 100 MB 100 000 000 B
 
 function linkDatabase() {
-  const filename = `./data/weather_test.db`
-  const filename_express = `./public/download/weather_test.db`
+  const filename = dbFilenameRaw
+  const filename_express = `./public/download/weather.db`
   rmSync(filename, { force: true });
   linkSync(dbFilename, filename)
   rmSync(filename_express, { force: true });
@@ -52,10 +52,10 @@ function linkDatabase() {
 
 function incrementDBFilename(name) {
   console.log("increment db filename")
-  const filename = `./data/weather_test.db`
+  const filename = dbFilenameRaw
   linkDatabase();
   dbCounter++;
-  dbFilename = `./data/weather_test${dbCounter}.db`
+  dbFilename = `./data/weather${dbCounter}.db`
   console.log(`create db file: ${dbFilename}`)
   initializeDatabase();
 }
