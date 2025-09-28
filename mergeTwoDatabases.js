@@ -85,6 +85,47 @@ function streamRowsFromDb(dbPath) {
 }
 
 /**
+ * Creates an Observable stream of rows from a database file.
+ * @param {string} dbPath - The path to the source SQLite database.
+ * @param {string} sql - The query to be executed
+ * @returns {Observable<any>} An observable that emits each row from the Weather table.
+ */
+function streamRowsFromDb2(dbPath, sql) {
+  return new Observable(subscriber => {
+    const db = new sqlite.Database(dbPath, sqlite.OPEN_READONLY, (err) => {
+      if (err) {
+        return subscriber.error(new Error(`Failed to open source DB ${dbPath}: ${err.message}`));
+      }
+      console.log(`Opened source DB: ${dbPath}`);
+    });
+
+    //const sql = 'SELECT timestamp, date, time, temp, pressure, tendency, windspeed, winddir FROM Weather ORDER BY timestamp DESC';
+
+    db.each(sql, [],
+      (err, row) => { // Row callback
+        if (err) subscriber.error(err);
+        else subscriber.next(row);
+      },
+      (err, count) => { // Completion callback
+        if (err) subscriber.error(err);
+        else {
+          console.log(`Finished streaming ${count} rows from ${dbPath}.`);
+          subscriber.complete();
+        }
+      }
+    );
+
+    // Return a teardown function to close the database connection.
+    return () => {
+      db.close(err => {
+        if (err) console.error(`Error closing source DB ${dbPath}:`, err.message);
+        else console.log(`Closed source DB: ${dbPath}`);
+      });
+    };
+  });
+}
+
+/**
  * Merges two databases using an RxJS pipeline.
  * @param {string} sourceDb1Path
  * @param {string} sourceDb2Path
@@ -95,12 +136,6 @@ export function mergeDatabasesWithRxJS(sourceDb1Path, sourceDb2Path, outputDbPat
   return new Promise((resolve, reject) => {
     console.log(`Merging '${sourceDb1Path}' and '${sourceDb2Path}' into '${outputDbPath}' with RxJS`);
     let totalRowsWritten = 0;
-
-    if (!fs.existsSync(sourceDb1Path) ) { 
-      console.log("file does not exist --> copy")
-      fs.copyFileSync(sourceDb2Path, outputDbPath); 
-      resolve();
-    }
 
     // Clean up existing output file
     if (fs.existsSync(outputDbPath)) {
@@ -123,7 +158,62 @@ export function mergeDatabasesWithRxJS(sourceDb1Path, sourceDb2Path, outputDbPat
     runQuery(outputDb, createTableSql).pipe(
       // 2. Once table is created, merge the streams from the two source databases
       concatMap(() => {
+        // CASES
+        if (!fs.existsSync(sourceDb1Path) && !fs.existsSync(sourceDb2Path)) {
+          // error
+          let err = "files do not exist"
+          reject(err);
+        }
+        if (!fs.existsSync(sourceDb1Path)) {
+          console.log('Table created in output DB. Only db1 source streams...');
+          const stream1$ = streamRowsFromDb(sourceDb2Path);
+          //return stream1$.pipe(take(maxRows));
+        }
+        if (!fs.existsSync(sourceDb2Path)) {
+          console.log('Table created in output DB. Only db2 source streams...');
+          const stream1$ = streamRowsFromDb(sourceDb2Path);
+          //return stream1$.pipe(take(maxRows));
+        }
+
+        // two db files exist
+        // start streaming...
+        console.log("two db files exist, start streaming...")
         console.log('Table created in output DB. Merging source streams...');
+
+        const dbQueryCount = "SELECT COUNT(*) as 'count' FROM weather"
+        const db2 = new sqlite.Database(sourceDb2Path, (err) => {
+          if (err) {
+            console.error(`Failed to create output DB: ${err.message}`);
+            return reject(new Error(`Failed open DB: ${err.message}`));
+          }
+          console.log(`Created and connected to database: ${outputDbPath}`);
+        });
+
+        db2.get(dbQueryCount, (err, result) => {
+          const db2Count = result.count
+          //console.log(`count: ${result.count}`)
+
+          if (db2Count < maxRows) { // to little data from db2 --> fill the rest with the newest data from db1
+            console.log("db2Count < maxRows")
+            // select count values from DB2
+            let queryDb2 = `SELECT * FROM weather ORDER BY id DESC`; // select all entries
+            const limit = maxRows - db2Count
+            let queryDb1 = `SELECT timestamp, date, time, temp, pressure, tendency, windspeed, winddir FROM weather ORDER BY timestamp DESC LIMIT ${limit}`; // select the newest entries
+            //console.log(queryDb1)
+
+            // select maxRows-count values from DB1
+            console.log('Table created in output DB. Merging source streams...');
+            const stream1$ = streamRowsFromDb(sourceDb2Path); // to little data from db2
+            const stream2$ = streamRowsFromDb2(sourceDb1Path, queryDb1); // fill the rest with the newest data from db1
+            return merge(stream1$, stream2$).pipe(take(maxRows));       // limit the merged database size
+          } else if (db2Count >= maxRows) { // there is enough data in db2
+            console.log("db2Count >= maxRows")
+            const stream1$ = streamRowsFromDb(sourceDb2Path); // stream only db2 but
+            return stream1$.pipe(take(maxRows)); //              limit the merged database size
+          }
+
+        })
+
         const stream1$ = streamRowsFromDb(sourceDb1Path);
         const stream2$ = streamRowsFromDb(sourceDb2Path);
         return merge(stream1$, stream2$).pipe(take(maxRows));
@@ -156,12 +246,12 @@ export function mergeDatabasesWithRxJS(sourceDb1Path, sourceDb2Path, outputDbPat
       // 5. Finalize the stream by closing the output database
       finalize(() => {
         outputDb.close((err) => {
-            if (err) {
-                console.error('Error closing output DB:', err.message);
-                // We can still try to resolve, as the file might be usable
-            }
-            console.log(`Output database closed. Total rows written: ${totalRowsWritten}. Merge complete.`);
-            resolve();
+          if (err) {
+            console.error('Error closing output DB:', err.message);
+            // We can still try to resolve, as the file might be usable
+          }
+          console.log(`Output database closed. Total rows written: ${totalRowsWritten}. Merge complete.`);
+          resolve();
         });
       }),
       catchError(err => {
