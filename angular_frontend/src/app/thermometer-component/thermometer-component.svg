@@ -1,0 +1,32 @@
+<svg viewBox="0 0 200 350" xmlns="http://www.w3.org/2000/svg">
+  <!-- Define a reusable circle element -->
+  <defs>
+    <rect id="bar"  />    
+  </defs>
+
+  <!-- Use the defined circle, applying a different fill -->
+  <g stroke="black" stroke-width="2">
+  <rect id="bar0" x="20" y="10" stroke-width="0" fill="lightgray" width="15" height="280" rx="8" transform="translate(140 300) rotate(180)"/>
+  <rect id="bar1" x="20" y="10" [attr.fill]="fill" width="15" [attr.height]="height" rx="8" transform="translate(140 300) rotate(180)"/>
+  </g>
+  <!-- Scale Group -->
+  <g id="scale" font-family="Arial" font-size="12" text-anchor="middle" stroke="black" stroke-width="1">
+    <!-- Ticks and Labels from -15 to 45 in steps of 5 -->
+    <text x="90" y="290" stroke="none" fill="black">-15</text><line x1="100" y1="290" x2="105" y2="290"/>
+    <text x="90" y="266.67" stroke="none" fill="black">-10</text><line x1="100" y1="266.67" x2="105" y2="266.67"/>
+    <text x="90" y="243.33" stroke="none" fill="black">-5</text><line x1="100" y1="243.33" x2="105" y2="243.33"/>
+    <text x="90" y="220" stroke="none" fill="black" font-weight="bold">0</text><line x1="100" y1="220" x2="105" y2="220"/>
+    <text x="90" y="196.67" stroke="none" fill="black">5</text><line x1="100" y1="196.67" x2="105" y2="196.67"/>
+    <text x="90" y="173.33" stroke="none" fill="black">10</text><line x1="100" y1="173.33" x2="105" y2="173.33"/>
+    <text x="90" y="150" stroke="none" fill="black">15</text><line x1="100" y1="150" x2="105" y2="150"/>
+    <text x="90" y="126.67" stroke="none" fill="black">20</text><line x1="100" y1="126.67" x2="105" y2="126.67"/>
+    <text x="90" y="103.33" stroke="none" fill="black">25</text><line x1="100" y1="103.33" x2="105" y2="103.33"/>
+    <text x="90" y="80" stroke="none" fill="black">30</text><line x1="100" y1="80" x2="105" y2="80"/>
+    <text x="90" y="56.67" stroke="none" fill="black">35</text><line x1="100" y1="56.67" x2="105" y2="56.67"/>
+    <text x="90" y="33.33" stroke="none" fill="black">40</text><line x1="100" y1="33.33" x2="105" y2="33.33"/>
+    <text x="90" y="10" stroke="none" fill="black">45</text><line x1="100" y1="10" x2="105" y2="10"/>
+  </g>
+  <g font-family="Arial" font-weight="bold">
+    <text id="temptext" x="20" y="310">{{ text }}</text><text x="20" y="330" >{{ name }}</text>
+  </g>
+</svg>

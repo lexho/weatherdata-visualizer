@@ -1,0 +1,40 @@
+<svg viewBox="0 0 300 350" xmlns="http://www.w3.org/2000/svg">
+  <!-- Define a reusable circle element -->
+  <defs>
+    <path id="compassNeedle" d="M 0 -100 L 15 0 L 0 100 L -15 0 Z" stroke="black"/>
+    <path id="compassNeedlePart" d="M 15 0 L 0 100 L -15 0 Z"  stroke="black" />    
+  </defs>
+
+  <!-- Scale Group (Static SVG) -->
+  <g id="scale" transform="translate(150, 150)" fill="none" stroke="black" font-size="14" text-anchor="middle">
+
+    <!-- Ticks and Labels -->
+    <g stroke-width="2">
+      <!-- N (North, 0 degrees) -->
+      <line x1="0" y1="-120" x2="0" y2="-110" />
+      <text x="0" y="-135" stroke="none" fill="black" dy="0.3em">N</text>
+      <!-- O (East, 90 degrees) -->
+      <line x1="120" y1="0" x2="110" y2="0" />
+      <text x="135" y="0" stroke="none" fill="black" dy="0.3em">O</text>
+      <!-- S (South, 180 degrees) -->
+      <line x1="0" y1="120" x2="0" y2="110" />
+      <text x="0" y="135" stroke="none" fill="black" dy="0.3em">S</text>
+      <!-- W (West, 270 degrees) -->
+      <line x1="-120" y1="0" x2="-110" y2="0" />
+      <text x="-135" y="0" stroke="none" fill="black" dy="0.3em">W</text>
+    </g>
+  </g>
+
+  <!-- Use the defined circle, applying a different fill -->
+  <g stroke="black" stroke-width="2" transform="translate(150, 150)">
+  <g [attr.transform]="transform">
+    <use id="compassNeedle1" href="#compassNeedle" [attr.stroke-width]="strokeWidth" [attr.fill]="fill" />
+    <use id="needle_part" href="#compassNeedlePart" [attr.stroke-width]="strokeWidth" [attr.fill]="fill_part"/>
+  </g>
+  </g>
+
+  <g font-family="Arial" font-weight="bold">
+    <text id="pressuretext" x="100" y="310">{{ text }}</text>
+    <text x="100" y="330">{{ name }}</text>
+  </g>
+</svg>

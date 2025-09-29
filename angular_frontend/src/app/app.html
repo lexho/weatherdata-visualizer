@@ -1,0 +1,15 @@
+<h1>Wetterstation</h1>
+<router-outlet />
+<div class="small-box">
+<a href="/downloaddb/">download DB-File</a>
+</div>
+<app-table-component [datasets]="data" />
+<div>
+<app-thermometer-component [temperatureValue]="currentTemperature" />
+<app-barometer-component [pressureValue]="currentPressure" />
+<app-anemometer-component [windspeedValue]="currentWindspeed" />
+<app-compass-component [winddirValue]="currentWinddir" />
+</div>
+<div class="small-box">
+v2.1.2, September 2025
+</div>

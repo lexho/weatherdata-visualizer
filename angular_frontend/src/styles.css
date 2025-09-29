@@ -1,0 +1,6 @@
+app-thermometer-component svg,
+app-barometer-component svg,
+app-anemometer-component svg,
+app-compass-component svg {
+  height: 300px;
+}

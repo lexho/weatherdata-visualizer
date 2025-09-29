@@ -1,0 +1,8 @@
+<table>
+<thead><tr><th>date</th><th>time</th><th>temp</th><th>pressure</th><th>tendency</th><th>windspeed</th><th>winddir</th></thead>
+<tbody>
+<tr *ngFor="let data of datasets">
+  <td>{{ data.date }}</td><td>{{ data.time }}</td><td>{{ data.weather.temp.value }}</td><td>{{ data.weather.pressure.value }}</td><td>{{ data.weather.tendency.value }}</td><td>{{ data.weather.windspeed.value }}</td><td>{{ data.weather.winddir.value }}</td>
+</tr>
+</tbody>
+</table>
