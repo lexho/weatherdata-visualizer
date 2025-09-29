@@ -1,32 +1,11 @@
 // /path/to/your/project/DataEmitter.js
-import { EventEmitter } from 'events';
 import { fromEvent } from 'rxjs';
-import { map, takeUntil, tap, filter, bufferCount, bufferTime } from 'rxjs/operators';
+import { map, tap, filter, bufferTime } from 'rxjs/operators';
 import { SerialPort } from 'serialport';
 import { ReadlineParser } from '@serialport/parser-readline'
-import { FakeSerialPort } from './FakeSerialPort.js';
-import sqlite from 'sqlite3';
-import fs from 'node:fs';
-import { rmSync, linkSync } from 'node:fs';
-import { exec } from 'node:child_process';
 import config from 'config';
-
-const dataDir = "./data/"
-function getDBCounter() {
-  // Ensure data directory exists
-  if (!fs.existsSync('./data')) {
-    fs.mkdirSync('./data');
-  }
-  const files = fs.readdirSync(dataDir);
-  const dbNumbers = files
-    .map(file => {
-      const match = file.match(/^weather(\d+)\.db$/);
-      return match ? parseInt(match[1], 10) : 0;
-    })
-    .filter(num => num > 0);
-
-  return dbNumbers.length > 0 ? Math.max(...dbNumbers) : 1;
-}
+import { FakeSerialPort } from './FakeSerialPort.js';
+import { init, saveBatch } from './model.js';
 
 const version = config.get('app.version')
 const serialport = config.get('app.serialport')
@@ -36,7 +15,7 @@ const useFakeSerial = config.get('app.useFakeSerial')
 const baudRate = config.get('app.baudRate')
 
 let db;
-export let dbCounter = getDBCounter()
+/*export let dbCounter = getDBCounter()
 export let dbFilenameRaw = config.get('app.database.filename')
 let dbFilename
 const dbLimit = config.get('app.database.filesizelimit') // 100 MB 100 000 000 B
@@ -81,7 +60,7 @@ function initializeDatabase() {
     // Create table if it doesn't exist
     db.run('CREATE TABLE IF NOT EXISTS Weather (id INTEGER PRIMARY KEY AUTOINCREMENT, timestamp INTEGER, date TEXT, time TEXT, temp REAL, pressure REAL, tendency TEXT, windspeed REAL, winddir TEXT)');
   });
-}
+}*/
 
 /**
  * A class that writes buffered data to a database
@@ -95,10 +74,7 @@ export class SerialToDatabase {
     console.log("version: " +  version)
     if (useFakeSerial) console.log('serial: using FakeSerialPort for testing.');
     // Initialize DB on startup
-    let dbFilenameRaw_splitted = dbFilenameRaw.split('.')
-    dbFilename = dbFilenameRaw_splitted[0] + dbCounter + "." + dbFilenameRaw_splitted[1]
-    initializeDatabase();
-    linkDatabase();
+    init();
     console.log(`bufferTime: ${buffertime} ms`)
     console.log(`maxBufferSize: ${maxBufferSize}`)
     console.log('SerialToDatabase initialized.');
@@ -158,7 +134,7 @@ export class SerialToDatabase {
 
     this.#dataSubscription = data$.pipe(
       //takeUntil(close$),
-      tap(line => console.log('got word from arduino: ', line)),
+      //tap(line => console.log('got word from arduino: ', line)),
       filter(line => line.length > 25),
       //tap(line => console.log('filtered line: ', line)),
       tap(line => {
@@ -215,25 +191,12 @@ export class SerialToDatabase {
         next: (dataBatch) => {
           if (dataBatch.length === 0) return; // Don't process empty batches
 
-          console.log(`--- Collected a batch of ${dataBatch.length} data points ---`);
+          //console.log(`--- Collected a batch of ${dataBatch.length} data points ---`);
           // write data to database
-          console.log("write data to database (" + dataBatch.length + " datasets)")
-          fs.stat(dbFilename, (err, stats) => {
-            if (err) {
-              console.error(err);
-            }
-            const file_size = stats.size
-            console.log(`db: ${dbFilename} filesize: ${file_size} B`)
-            if (file_size > dbLimit) {
-              console.log("file is too big")
-              incrementDBFilename()
-              exec(`sqlite3 ${dbFilename} < createTable.sql`);
-            }
-            // we have access to the file stats in `stats`
-          });
-          for (let dataset of dataBatch) {
+          saveBatch(dataBatch);
+          /*for (let dataset of dataBatch) {
             writeToDatabase(dataset);
-          }
+          }*/
           //this.collectedData.push(...dataBatch);
         },
         error: (err) => {
@@ -266,28 +229,4 @@ export class SerialToDatabase {
     console.log('Attempting to restart in 5 seconds...');
     setTimeout(() => this.start(), 5000);
   }
-}
-
-function writeToDatabase(dataset) {
-  //console.log("write to database: id: " + dataset.id)
-
-  //db = new sqlite.Database(DB_filename);
-
-  db.serialize(() => {
-    //console.log(dataset)
-    const query = 'INSERT INTO Weather (timestamp, date, time, temp, pressure, tendency, windspeed, winddir) VALUES (?, ?, ?, ?, ?, ?, ?, ?)';
-    const timestamp = dataset.timestamp
-    const date = dataset.date
-    const time = dataset.time
-    const temp = dataset.weather.temp.value
-    const pressure = dataset.weather.pressure.value
-    const tendency = dataset.weather.tendency.value
-    const windspeed = dataset.weather.windspeed.value
-    const winddir = dataset.weather.winddir.value
-    db.run(query, [timestamp, date, time, temp, pressure, tendency, windspeed, winddir], (error, results) => {
-      if (error) {
-        console.error('DB insert error:', error.message);
-      }
-    });
-  });
 }

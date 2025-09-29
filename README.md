@@ -12,6 +12,9 @@ sudo apt install nodejs
 ## Installation
 ```
 npm install
+cd angular_frontend
+ng build
+cp dist/angular_svg/browser/ ../public/
 ```
 ## start
 ```
