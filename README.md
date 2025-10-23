@@ -2,6 +2,7 @@
 
 ## Description
 visualizes weather data in the webbrowser coming from an Arduino weather station at the USB port
+<img width="1024" height="549" alt="weatherstation-gui" src="https://github.com/user-attachments/assets/433fbd01-0e18-49e0-8242-955883e3c7d7" />
 
 ## Prerequisites
 Node.js
