@@ -26,7 +26,14 @@ watch weather data at http://localhost:8080
 
 ## install as systemd services
 ```
+sudo cp ./systemd/*.service /etc/systemd/system/
 sudo systemctl daemon-reload
-sudo systemctl enable weatherdb2
+sudo systemctl enable ttyperm.service
+sudo systemctl enable weatherdb2.service
 sudo systemctl start weatherdb2
+```
+
+## install udev rules
+```
+sudo cp ./udev/*.rules /etc/udev/rules.d/
 ```

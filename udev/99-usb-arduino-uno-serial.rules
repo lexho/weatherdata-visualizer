@@ -1,0 +1,1 @@
+ACTION=="add", SUBSYSTEM=="tty", ATTRS{serial}=="1234567890ABCDEFGH0002", RUN+="/bin/sh -c 'stty -F $devnode 2000000 raw -icrnl"
