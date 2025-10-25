@@ -1,1 +1,1 @@
-ACTION=="add", SUBSYSTEM=="tty", ATTRS{serial}=="1234567890ABCDEFGH0002", OWNER="debian", GROUP="debian", MODE="0440", RUN+="/bin/sh -c 'stty -F $devnode 2000000 raw -icrnl'"
+ACTION=="add", SUBSYSTEM=="tty", ATTRS{serial}=="1234567890ABCDEFGH0002", OWNER="debian", GROUP="debian", MODE="0440", RUN+="/bin/sh -c 'stty -F $devnode 115200 raw -icrnl'"
