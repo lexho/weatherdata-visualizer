@@ -25,15 +25,15 @@ export class CompassComponent {
         //console.log("winddir length: " + value.length)
         //if(value.length == 2) value = value[0]
         //if(value.length == 3) value = value[0]+value[1]
-        if(value == 'N') return 0
+        if(value == 'N') return 180
         if(value == 'O') return 90
-        if(value == 'S') return 180
+        if(value == 'S') return 0
         if(value == 'W') return 270
 
-        if(value == "NO") return 45
-        if(value == "SO") return 135
-        if(value == "SW") return 125
-        if(value == "NW") return 315
+        if(value == "NO") return 135
+        if(value == "SO") return 45
+        if(value == "SW") return 315
+        if(value == "NW") return 225
         console.error("invalid wind dir")
         return -1
     }
@@ -41,6 +41,7 @@ export class CompassComponent {
   private _updateWinddir(value: string): void {
     console.log("update winddir: " + value)
         let value_num = this.windDirToDegree(value)
+        value_num = 360 - value_num
         //console.log("winddir value: " + value_num)
         //console.log(typeof value_num)
         if(typeof(value_num) != 'number' || value_num < 0 || value_num > 360) { 
@@ -50,7 +51,7 @@ export class CompassComponent {
             return;
         }
         if(Number.isInteger(value_num)) {
-            this.fill = "lightblue"
+            this.fill = "lightblue"  
             this.fill_part = "blue"
             this.strokeWidth = 2
             this.transform = `rotate(${value_num})`

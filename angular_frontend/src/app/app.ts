@@ -36,7 +36,7 @@ export class App implements OnInit {
   ngOnInit(): void {
     this.titleService.setTitle('Wetterstation');
     // The HTTP call is asynchronous. We subscribe to get the data.
-    interval(2000).pipe(
+    interval(200).pipe(
       
     ).subscribe(() => {
       this.dataSubscription = this.weatherService.getAllData().subscribe({

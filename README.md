@@ -28,12 +28,15 @@ watch weather data at http://localhost:8080
 ```
 sudo cp ./systemd/*.service /etc/systemd/system/
 sudo systemctl daemon-reload
-sudo systemctl enable ttyperm.service
 sudo systemctl enable weatherdb2.service
 sudo systemctl start weatherdb2
 ```
 
 ## install udev rules
 ```
+# show serial number of your serial usb device
+ls -s /dev/serial/by-id/
+# adjust ATTRS{serial} in 99-usb-arduino-uno-serial.rules
+# copy file to udev directories of your system
 sudo cp ./udev/*.rules /etc/udev/rules.d/
 ```

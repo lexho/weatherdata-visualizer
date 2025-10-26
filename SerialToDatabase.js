@@ -69,6 +69,9 @@ export class SerialToDatabase {
   #counter = 0;
   #port;
   #dataSubscription;
+  #retryCount = 0;
+  #maxRetries = 5; // Stop after 5 retries
+  #retryTimeout;
 
   constructor() {
     console.log("version: " +  version)
@@ -103,6 +106,7 @@ export class SerialToDatabase {
    * Starts watching the file for changes and emitting data events.
    */
   start() {
+    console.log(`Attempting to open serial port. Attempt #${this.#retryCount + 1}`);
     try {
       if (!useFakeSerial) {
         this.#port = new SerialPort({
@@ -114,14 +118,15 @@ export class SerialToDatabase {
       }
     } catch (err) {
       console.error('Failed to open serial port:', err.message);
-      console.log('Retrying in 10 seconds...');
-      setTimeout(() => this.reset(), 10000);
+      this.reset();
       return;
     }
 
     const parser = this.#port.pipe(new ReadlineParser({ delimiter: '\n' }));
 
     this.#port.on("open", () => {
+      // Reset retry count on successful connection
+      this.#retryCount = 0;
       console.log("serial port open")
     });
 
@@ -174,11 +179,11 @@ export class SerialToDatabase {
           date: date1,
           time: time,
           weather: {
-            temp: { value: temp },
-            pressure: { value: pressure },
+            temp: { value: temp, unit: "degree" },
+            pressure: { value: pressure, unit: "hPa" },
             tendency: { value: tendency },
-            windspeed: { value: windspeed },
-            winddir: { value: winddir }
+            windspeed: { value: windspeed, unit: "km/h" },
+            winddir: { value: winddir, unit: "degree" }
           }
         };
       }),
@@ -204,7 +209,9 @@ export class SerialToDatabase {
           // An error here often indicates a problem with the underlying port. Reset it.
           this.reset();
         },
-        complete: () => console.log('Data collection complete.'),
+        complete: () => {
+          console.log('Data collection stream completed.');
+        }
       });
   }
 
@@ -214,6 +221,9 @@ export class SerialToDatabase {
   stop() {
     console.log('Stopping SerialToDatabase');
 
+    if (this.#retryTimeout) {
+      clearTimeout(this.#retryTimeout);
+    }
     if (this.#dataSubscription) {
       this.#dataSubscription.unsubscribe();
     }
@@ -224,9 +234,18 @@ export class SerialToDatabase {
   }
 
   reset() {
-    console.log('Resetting SerialPort connection...');
     this.stop();
-    console.log('Attempting to restart in 5 seconds...');
-    setTimeout(() => this.start(), 5000);
+
+    if (this.#retryCount >= this.#maxRetries) {
+      console.error(`Max retries (${this.#maxRetries}) reached. Stopping reconnection attempts. Please check the hardware and restart the application.`);
+      return;
+    }
+
+    // Exponential backoff: 5s, 10s, 20s, 40s, 80s
+    const delay = Math.pow(2, this.#retryCount) * 5000;
+    this.#retryCount++;
+
+    console.log(`Resetting SerialPort connection. Attempting to restart in ${delay / 1000} seconds...`);
+    this.#retryTimeout = setTimeout(() => this.start(), delay);
   }
 }

@@ -21,17 +21,16 @@ export class AnemometerComponent {
   }
 
   private _updateWindspeed(value: number): void {
-    // 0 - 260
-    // 260/100
-    // 0 - 360
-    if (typeof (value) != 'number' || value < 0 || value > 260) {
+    // The gauge's rotation arc is 283.4 degrees (from -145 to 138.4).
+    // To map the new 0-130 km/h range, we calculate a new scaling factor.
+    // New scaling factor: 283.4 / 130 = 2.18
+    if (typeof (value) !== 'number' || value < 0 || value > 130) {
       console.error("windspeed out of range");
       this.fill = "lightgray"
       this.strokeWidth = 0
       return;
     }
-    let trimmedValue = value * 1.09
-    trimmedValue -= 145
+    const trimmedValue = (value * 2.18) - 145;
     this.fill = "url(#metal)"
     this.strokeWidth = 2
     this.transform = `rotate(${trimmedValue})`

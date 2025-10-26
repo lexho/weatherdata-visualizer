@@ -1,16 +1,16 @@
 {
   "app": {
-    "version": "v2.1.1",
+    "version": "v2.1.3",
     "port": "8080",
     "serialport": "/dev/ttyACM0",
     "useFakeSerial": false,
     "baudRate": 115200,
-    "maxBufferSize": 100,
-    "bufferTime": 60000,
+    "maxBufferSize": 10000,
+    "bufferTime": 20000,
     "database": {
       "filename": "data/weather.db",
-      "filesizelimit": 100000000,
-      "maxrowsmerge": 20000
+      "filesizelimit": 200000000,
+      "maxrowsmerge": 200
     }
   }
 }

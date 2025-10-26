@@ -24,20 +24,19 @@ export class BarometerComponent implements OnChanges {
   }
 
   private _updatePressure(value: number): void {
-    // 955 - 1075
-    // 0 - 100
-    //value + 955 | 1075
-    // 360
-    // 955 + 120 = 1075
-    if (typeof (value) != 'number' || value < 955 || value > 1075) {
+    // The gauge face is scaled for 960 to 1070 hPa.
+    // The rotation arc is from -145 degrees to 138.3 degrees (a total of 283.3 degrees).
+    // The value range is 110 hPa (1070 - 960).
+    // Scaling factor: 283.3 / 110 = 2.575
+    if (typeof (value) !== 'number' || value < 960 || value > 1070) {
       console.error("pressure out of range");
       this.fill = "lightgray"
       this.strokeWidth = 0
       return;
     }
-    let trimmedValue = value - 955;
-    trimmedValue *= 2.7
-    trimmedValue -= 160
+    // Map the pressure value to the rotation angle.
+    // Formula: (currentValue - minValue) * scalingFactor + startAngle
+    const trimmedValue = (value - 960) * 2.575 - 145;
     this.fill = "url(#metal)"
     this.strokeWidth = 2
     this.transform = `rotate(${trimmedValue})`
