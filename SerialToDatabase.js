@@ -160,9 +160,9 @@ export class SerialToDatabase {
         let date1 = date.toLocaleDateString("de-AT", { day: "2-digit", month: "2-digit", year: "numeric" });
         const options = {
           hour12: false,
-          hour: "numeric",
-          minute: "numeric",
-          second: "numeric"
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit"
         };
         let time = date.toLocaleTimeString("de-DE", options);
         const id = this.#counter++;
